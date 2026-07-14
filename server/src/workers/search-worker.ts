@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { companiesRepository } from "../repositories/companies.js";
 import { contactsRepository } from "../repositories/contacts.js";
+import { sourcesRepository } from "../repositories/sources.js";
 import { productsRepository } from "../repositories/products.js";
 import { tasksRepository } from "../repositories/tasks.js";
 import { inspectPublicWebsite } from "../services/crawler/website-profile.js";
@@ -33,7 +34,7 @@ export class SearchWorker {
       const keywords = generateKeywords(product, task.country, task.maxKeywords);
       await tasksRepository.update(task.id, { keywords, keywordCount: keywords.length, progress: 5 });
 
-      const discovered = new Map<string, { website: string; title: string; snippet: string }>();
+      const discovered = new Map<string, { website: string; title: string; snippet: string; keyword: string; rank: number }>();
       for (let index = 0; index < keywords.length; index += 1) {
         const results = await this.provider.search({ keyword: keywords[index], country: task.country, language: task.language, maxResults: task.maxResults });
         for (const result of results) {
@@ -41,7 +42,7 @@ export class SearchWorker {
           if (isDisqualified(initialEvidence)) continue;
           const normalized = normalizeUrl(result.url); const domain = normalized && rootDomain(normalized);
           if (!domain || isExcludedDomain(domain) || discovered.has(domain)) continue;
-          discovered.set(domain, { website: new URL(normalized).origin, title: result.title, snippet: result.snippet });
+          discovered.set(domain, { website: new URL(normalized).origin, title: result.title, snippet: result.snippet, keyword: result.keyword, rank: result.rank });
         }
         await tasksRepository.update(task.id, { domainsFound: discovered.size, progress: 5 + Math.round((index + 1) / Math.max(keywords.length, 1) * 35) });
         await delay(env.SEARCH_REQUEST_DELAY_MS);
@@ -52,7 +53,7 @@ export class SearchWorker {
       for (let index = 0; index < entries.length; index += 1) {
         const [domain, hit] = entries[index];
         try {
-          const profile = await inspectPublicWebsite(hit.website);
+          const profile = await inspectPublicWebsite(hit.website, { maxPages: task.maxPages, findContacts: task.findContacts, findEmails: task.findEmails, findPhones: task.findPhones, findAddresses: task.findAddresses });
           if (profile) {
             // Search localization is not geographical proof. The official public
             // address must explicitly match the target country before saving.
@@ -69,6 +70,11 @@ export class SearchWorker {
                 developmentStatus: "未联系", priority: assessment.grade === "A", sourceTaskId: task.id,
               });
               for (const contact of profile.contacts) await contactsRepository.upsert(company.id, contact);
+              try {
+                await sourcesRepository.create({ companyId: company.id, taskId: task.id, title: hit.title || company.name, pageUrl: profile.evidenceUrl, pageType: "homepage", searchKeyword: hit.keyword, searchRank: hit.rank, evidenceText: `${hit.snippet}\n${profile.evidenceText}` });
+              } catch {
+                console.warn("Lead source could not be saved. Connect the Sources database to the Notion integration.");
+              }
               valid += 1;
             }
           }

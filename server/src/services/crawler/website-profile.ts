@@ -27,10 +27,17 @@ export interface WebsiteProfile {
   evidenceText: string;
   evidenceUrl: string;
 }
+export interface CrawlOptions {
+  maxPages?: number;
+  findContacts?: boolean;
+  findEmails?: boolean;
+  findPhones?: boolean;
+  findAddresses?: boolean;
+}
 
 interface Page { url: string; html: string; text: string; title: string; }
 
-const maxPages = 5;
+const defaultMaxPages = 5;
 const userAgent = "LeadFinderBot/1.0 (+public-business-information-only)";
 const pageLink = /(products?|applications?|solutions?|industries|about|company|contact|team|management|leadership)/i;
 const excludedAsset = /\.(?:pdf|zip|rar|7z|png|jpe?g|gif|webp|svg|mp4|mp3|docx?|xlsx?)$/i;
@@ -114,7 +121,8 @@ function publicContactsFromPage($: cheerio.CheerioAPI, sourceUrl: string): Publi
   return found;
 }
 
-export async function inspectPublicWebsite(initialUrl: string): Promise<WebsiteProfile | null> {
+export async function inspectPublicWebsite(initialUrl: string, options: CrawlOptions = {}): Promise<WebsiteProfile | null> {
+  const maxPages = Math.max(1, Math.min(options.maxPages || defaultMaxPages, 10));
   const start = await assertSafePublicUrl(initialUrl);
   if (!(await robotsAllows(start.href))) return null;
   const home = await fetchHtml(start.origin);
@@ -151,5 +159,15 @@ export async function inspectPublicWebsite(initialUrl: string): Promise<WebsiteP
   const cleanedEmails = unique(emails.map(cleanEmail).filter(usableEmail).filter(generalEmail)).slice(0, 5); const cleanedPhones = unique(phones.map(cleanPhone).filter((phone) => phone.replace(/\D/g, "").length >= 7)).slice(0, 5);
   const dedupedContacts = Array.from(new Map(contacts.filter((contact) => contact.name && contactRole.test(contact.jobTitle || "")).map((contact) => [`${contact.name}|${contact.jobTitle}`, contact])).values()).slice(0, 8);
   const evidenceText = pages.map((page) => page.text).join(" ").slice(0, 50000);
-  return { companyName, website: home.url, country, address, city, region, postalCode, emails: cleanedEmails, phones: cleanedPhones, contacts: dedupedContacts, evidenceText, evidenceUrl: home.url };
+  return {
+    companyName, website: home.url, country,
+    address: options.findAddresses === false ? undefined : address,
+    city: options.findAddresses === false ? undefined : city,
+    region: options.findAddresses === false ? undefined : region,
+    postalCode: options.findAddresses === false ? undefined : postalCode,
+    emails: options.findEmails === false ? [] : cleanedEmails,
+    phones: options.findPhones === false ? [] : cleanedPhones,
+    contacts: options.findContacts === false ? [] : dedupedContacts,
+    evidenceText, evidenceUrl: home.url,
+  };
 }

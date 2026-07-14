@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lead Finder | 海外潜在客户</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>.crawl-options{display:flex;flex-wrap:wrap;gap:12px;border:1px solid #dfe6f1;border-radius:10px;padding:12px}.crawl-options legend{font-weight:700}.crawl-options label{display:flex;align-items:center;gap:7px;font-weight:600}</style>
   </head>
   <body class="lead-finder">
     <main class="lf-shell">
@@ -55,7 +56,9 @@ resin importer</textarea></label>
             <label>目标语言<input name="language" value="en" required /></label>
             <label>最多关键词<input name="maxKeywords" type="number" min="1" max="50" value="12" /></label>
             <label>每个关键词结果数<input name="maxResults" type="number" min="1" max="20" value="10" /></label>
+            <label>单公司最大抓取页数<input name="maxPages" type="number" min="1" max="10" value="5" /></label>
             <label>最低客户评分<input name="minScore" type="number" min="0" max="100" value="40" /></label>
+            <fieldset class="span-2 crawl-options"><legend>采集公开信息</legend><label><input name="findContacts" type="checkbox" checked style="width:auto" /> 公开联系人与职位</label><label><input name="findEmails" type="checkbox" checked style="width:auto" /> 公开邮箱</label><label><input name="findPhones" type="checkbox" checked style="width:auto" /> 公开电话</label><label><input name="findAddresses" type="checkbox" checked style="width:auto" /> 公开地址</label></fieldset>
             <button>加入搜索队列</button></form></article>
           <article class="panel"><div class="toolbar"><h2>任务状态</h2><button id="refreshTasksButton" class="secondary" type="button">刷新状态</button></div><div id="tasksList" class="cards"></div></article></div>
         </section>

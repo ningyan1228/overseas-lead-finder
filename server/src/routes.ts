@@ -6,6 +6,7 @@ import { requireAuth } from "./middleware/auth.js";
 import { companiesRepository } from "./repositories/companies.js";
 import { contactsRepository } from "./repositories/contacts.js";
 import { productsRepository } from "./repositories/products.js";
+import { sourcesRepository } from "./repositories/sources.js";
 import { tasksRepository } from "./repositories/tasks.js";
 
 const productSchema = z.object({
@@ -18,7 +19,8 @@ const productSchema = z.object({
 const taskSchema = z.object({
   productId: z.string().uuid(), country: z.string().min(2).max(80), language: z.string().min(2).max(20),
   maxKeywords: z.number().int().min(1).max(50).default(12), maxResults: z.number().int().min(1).max(20).default(10),
-  minScore: z.number().int().min(0).max(100).default(40),
+  maxPages: z.number().int().min(1).max(10).default(5), findContacts: z.boolean().default(true), findEmails: z.boolean().default(true),
+  findPhones: z.boolean().default(true), findAddresses: z.boolean().default(true), minScore: z.number().int().min(0).max(100).default(40),
 });
 
 export function createRouter() {
@@ -59,5 +61,6 @@ export function createRouter() {
     minScore: req.query.includeLowQuality === "true" ? undefined : 40,
   }) }));
   router.get("/companies/:id/contacts", async (req, res) => res.json({ items: await contactsRepository.listByCompany(req.params.id) }));
+  router.get("/companies/:id/sources", async (req, res) => res.json({ items: await sourcesRepository.listByCompany(req.params.id) }));
   return router;
 }
