@@ -2,7 +2,20 @@ services:
   lead-finder-api:
     build: .
     env_file: .env
+    container_name: lead-finder-api
     restart: unless-stopped
-    network_mode: host
-    # HOST must remain 127.0.0.1 when using host networking behind Nginx.
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      VIRTUAL_HOST: ${VIRTUAL_HOST}
+      VIRTUAL_PORT: 3000
+      LETSENCRYPT_HOST: ${LETSENCRYPT_HOST}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    expose:
+      - "3000"
+    networks:
+      - web
 
+networks:
+  web:
+    external: true

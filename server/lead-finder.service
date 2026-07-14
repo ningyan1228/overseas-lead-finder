@@ -5,16 +5,15 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/lead-finder/server
-EnvironmentFile=/opt/lead-finder/server/.env
-ExecStart=/usr/bin/node /opt/lead-finder/server/dist/src/index.js
+WorkingDirectory=/home/ubuntu/projects/lead-finder-api
+EnvironmentFile=/home/ubuntu/projects/lead-finder-api/.env
+ExecStart=/usr/bin/node /home/ubuntu/projects/lead-finder-api/dist/src/index.js
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/opt/lead-finder/server
+ReadWritePaths=/home/ubuntu/projects/lead-finder-api
 
 [Install]
 WantedBy=multi-user.target
-
