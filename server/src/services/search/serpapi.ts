@@ -14,11 +14,27 @@ const googleCountryCodes: Record<string, string> = {
 };
 
 function countryCode(country: string) { return googleCountryCodes[canonicalCountry(country) || ""]; }
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+function canRetry(error: unknown) {
+  if (!axios.isAxiosError(error)) return false;
+  const status = error.response?.status;
+  return error.code === "ECONNABORTED" || error.code === "ETIMEDOUT" || status === 429 || Boolean(status && status >= 500);
+}
 
 export class SerpApiProvider implements SearchProvider {
   async search(params: SearchParams) {
     if (!env.SERPAPI_API_KEY) throw new Error("SERPAPI_API_KEY 尚未配置，无法执行搜索任务。");
-    const { data } = await axios.get("https://serpapi.com/search.json", { params: { engine:"google", q:params.keyword, api_key:env.SERPAPI_API_KEY, hl:params.language, gl:countryCode(params.country), num:Math.min(params.maxResults,20), start:((params.page||1)-1)*params.maxResults }, timeout:15000, maxRedirects:2 });
-    return (data.organic_results || []).slice(0,params.maxResults).map((item:any,index:number)=>({title:String(item.title||""),url:String(item.link||""),snippet:String(item.snippet||""),rank:Number(item.position||index+1),keyword:params.keyword,country:params.country,language:params.language}));
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= env.SERPAPI_RETRIES; attempt += 1) {
+      try {
+        const { data } = await axios.get("https://serpapi.com/search.json", { params: { engine:"google", q:params.keyword, api_key:env.SERPAPI_API_KEY, hl:params.language, gl:countryCode(params.country), num:Math.min(params.maxResults,20), start:((params.page||1)-1)*params.maxResults }, timeout: env.SERPAPI_TIMEOUT_MS, maxRedirects:2 });
+        return (data.organic_results || []).slice(0,params.maxResults).map((item:any,index:number)=>({title:String(item.title||""),url:String(item.link||""),snippet:String(item.snippet||""),rank:Number(item.position||index+1),keyword:params.keyword,country:params.country,language:params.language}));
+      } catch (error) {
+        lastError = error;
+        if (!canRetry(error) || attempt === env.SERPAPI_RETRIES) throw error;
+        await delay(1000 * (attempt + 1));
+      }
+    }
+    throw lastError;
   }
 }

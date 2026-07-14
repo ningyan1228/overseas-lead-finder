@@ -11,6 +11,8 @@ const schema = z.object({
   JWT_EXPIRES_IN: z.string().default("8h"),
   SEARCH_PROVIDER: z.literal("serpapi").default("serpapi"),
   SERPAPI_API_KEY: z.string().optional(),
+  SERPAPI_TIMEOUT_MS: z.coerce.number().int().min(5000).max(60000).default(20000),
+  SERPAPI_RETRIES: z.coerce.number().int().min(0).max(4).default(2),
   NOTION_TOKEN: z.string().optional(),
   NOTION_PRODUCTS_DATABASE_ID: z.string().optional(),
   NOTION_SEARCH_TASKS_DATABASE_ID: z.string().optional(),
@@ -23,4 +25,3 @@ const schema = z.object({
 });
 export const env = schema.parse(process.env);
 export const allowedOrigins = env.ALLOWED_ORIGINS.split(",").map((v) => v.trim()).filter(Boolean);
-

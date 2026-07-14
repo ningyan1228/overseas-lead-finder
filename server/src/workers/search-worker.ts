@@ -35,8 +35,17 @@ export class SearchWorker {
       await tasksRepository.update(task.id, { keywords, keywordCount: keywords.length, progress: 5 });
 
       const discovered = new Map<string, { website: string; title: string; snippet: string; keyword: string; rank: number }>();
+      const failedKeywords: string[] = [];
       for (let index = 0; index < keywords.length; index += 1) {
-        const results = await this.provider.search({ keyword: keywords[index], country: task.country, language: task.language, maxResults: task.maxResults });
+        let results;
+        try {
+          results = await this.provider.search({ keyword: keywords[index], country: task.country, language: task.language, maxResults: task.maxResults });
+        } catch (error) {
+          failedKeywords.push(keywords[index]);
+          console.warn("Search keyword skipped after retries:", keywords[index], error instanceof Error ? error.message : "unknown error");
+          await tasksRepository.update(task.id, { domainsFound: discovered.size, progress: 5 + Math.round((index + 1) / Math.max(keywords.length, 1) * 35) });
+          continue;
+        }
         for (const result of results) {
           const initialEvidence = `${result.title} ${result.snippet}`;
           if (isDisqualified(initialEvidence)) continue;
@@ -48,6 +57,7 @@ export class SearchWorker {
         await delay(env.SEARCH_REQUEST_DELAY_MS);
       }
 
+      if (!discovered.size && failedKeywords.length === keywords.length) throw new Error("All keyword searches timed out after automatic retries.");
       const entries = [...discovered.entries()].slice(0, env.MAX_COMPANIES_PER_TASK);
       let valid = 0;
       for (let index = 0; index < entries.length; index += 1) {
@@ -82,7 +92,8 @@ export class SearchWorker {
         await tasksRepository.update(task.id, { companiesProcessed: index + 1, validCompanies: valid, progress: 40 + Math.round((index + 1) / Math.max(entries.length, 1) * 58) });
         await delay(900);
       }
-      await tasksRepository.update(task.id, { status: "completed", progress: 100, completedAt: new Date().toISOString() });
+      const partialMessage = failedKeywords.length ? `部分关键词未完成（${failedKeywords.slice(0, 3).join("、")}${failedKeywords.length > 3 ? "等" : ""}），其余关键词已完成。` : "";
+      await tasksRepository.update(task.id, { status: "completed", progress: 100, completedAt: new Date().toISOString(), errorMessage: partialMessage });
     } catch (error) {
       const message = error instanceof Error ? error.message : "未知任务错误";
       console.error("Search worker failed:", message);
