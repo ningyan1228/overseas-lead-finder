@@ -25,6 +25,20 @@
   function addRefreshButton(selector, loader, label) { $(selector).addEventListener("click", async (e) => { const button = e.currentTarget; button.disabled = true; button.textContent = "刷新中…"; try { await loader(); message(`${label}已刷新。`); } catch (err) { message(err.message); } finally { button.disabled = false; button.textContent = label; } }); }
   addRefreshButton("#refreshTasksButton", loadTasks, "刷新状态");
   addRefreshButton("#refreshCompaniesButton", loadCompanies, "刷新结果");
+  $("#pdfButton").addEventListener("click", () => {
+    const rows = window.companies || [];
+    if (!rows.length) { message("没有可导出的潜在客户。请先刷新结果或调整筛选条件。"); return; }
+    const country = $("#companyCountry").value.trim() || "全部国家";
+    const grade = $("#companyGrade").value || "所有等级";
+    const generatedAt = new Date().toLocaleString("zh-CN");
+    const tableRows = rows.map((c) => `<tr><td><strong>${esc(c.name)}</strong><br><span>${esc(c.domain)}</span></td><td>${esc(c.country)} ${esc(c.city)}</td><td>${esc(c.companyType)}</td><td>${esc(c.leadGrade)}级 ${esc(c.leadScore)}</td><td>${esc(c.generalEmail)}<br>${esc(c.phone)}</td><td>${c.website ? `<a href="${esc(c.website)}">${esc(c.website)}</a>` : "-"}</td><td>${esc(c.developmentStatus)}</td></tr>`).join("");
+    const report = window.open("", "_blank");
+    if (!report) { message("浏览器拦截了打印窗口，请允许弹出窗口后重试。"); return; }
+    report.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>潜在客户报告</title><style>body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#13213c;margin:28px}h1{margin:0 0 6px;font-size:24px}.meta{color:#61708b;margin:0 0 20px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #dfe6f1;padding:8px;text-align:left;vertical-align:top}th{background:#eaf1ff}td span{color:#61708b}a{color:#245bc7;word-break:break-all}@page{size:landscape;margin:12mm}@media print{body{margin:0}}</style></head><body><h1>海外潜在客户报告</h1><p class="meta">国家筛选：${esc(country)}　等级筛选：${esc(grade)}　生成时间：${esc(generatedAt)}　共 ${rows.length} 条</p><table><thead><tr><th>公司</th><th>国家 / 城市</th><th>类型</th><th>评分</th><th>联系</th><th>官网</th><th>状态</th></tr></thead><tbody>${tableRows}</tbody></table></body></html>`);
+    report.document.close();
+    report.focus();
+    report.print();
+  });
   $("#exportButton").addEventListener("click", () => { const rows = window.companies || []; const keys = ["name","localName","website","domain","country","region","city","address","postalCode","companyType","applications","relevantProducts","leadScore","leadGrade","generalEmail","phone","evidenceSummary","evidenceUrl","developmentStatus","firstFoundAt","lastVerifiedAt"]; const csv = [keys.join(","), ...rows.map(r => keys.map(k => `"${String(Array.isArray(r[k]) ? r[k].join("; ") : r[k] || "").replaceAll('"','""')}"`).join(","))].join("\n"); const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download="lead-finder-companies.csv";a.click();URL.revokeObjectURL(a.href); });
   $("#logoutButton").addEventListener("click", () => { sessionStorage.removeItem("leadFinderToken"); location.reload(); });
   if (token()) showApp();
