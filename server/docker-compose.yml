@@ -1,0 +1,8 @@
+services:
+  lead-finder-api:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    network_mode: host
+    # HOST must remain 127.0.0.1 when using host networking behind Nginx.
+

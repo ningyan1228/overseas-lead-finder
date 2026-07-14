@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lead Finder | 海外潜在客户</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="lead-finder">
+    <main class="lf-shell">
+      <header class="lf-header">
+        <div><p class="eyebrow">B2B Prospecting</p><h1>海外潜在客户搜索</h1></div>
+        <button id="logoutButton" class="ghost" hidden>退出登录</button>
+      </header>
+
+      <section id="loginPanel" class="panel login-panel">
+        <h2>管理员登录</h2>
+        <form id="loginForm"><label>密码<input id="password" type="password" autocomplete="current-password" required /></label><button>进入系统</button></form>
+      </section>
+
+      <section id="appPanel" hidden>
+        <nav class="tabs" aria-label="Lead Finder 页面">
+          <button class="tab active" data-view="products">产品</button>
+          <button class="tab" data-view="tasks">搜索任务</button>
+          <button class="tab" data-view="companies">潜在客户</button>
+        </nav>
+
+        <div id="message" role="status"></div>
+
+        <section id="products" class="view active">
+          <div class="grid two"><article class="panel"><h2>新增产品</h2><form id="productForm" class="form-grid">
+            <label>产品名称<input name="name" required placeholder="PVDC-MA 树脂" /></label>
+            <label>英文名称<input name="englishName" required placeholder="PVDC-MA Resin" /></label>
+            <label class="span-2">产品说明<textarea name="description" required>Vinylidene chloride and methyl acrylate copolymer resin for high-barrier packaging applications.</textarea></label>
+            <label>目标应用（每行一个）<textarea name="applications">PVDC coextruded film
+multilayer barrier film
+high barrier blown film
+meat shrink bags
+pharmaceutical blister film</textarea></label>
+            <label>目标企业类型（每行一个）<textarea name="companyTypes">film manufacturer
+flexible packaging manufacturer
+pharmaceutical packaging manufacturer
+polymer distributor
+resin importer</textarea></label>
+            <label>自定义关键词（每行一个）<textarea name="customKeywords"></textarea></label>
+            <label>排除关键词（每行一个）<textarea name="excludeKeywords"></textarea></label>
+            <button>保存产品</button></form></article>
+          <article class="panel"><h2>已保存产品</h2><div id="productsList" class="cards"></div></article></div>
+        </section>
+
+        <section id="tasks" class="view">
+          <div class="grid two"><article class="panel"><h2>创建搜索任务</h2><form id="taskForm" class="form-grid">
+            <label>产品<select name="productId" id="productSelect" required></select></label>
+            <label>目标国家<input name="country" required placeholder="Turkey" /></label>
+            <label>目标语言<input name="language" value="en" required /></label>
+            <label>最多关键词<input name="maxKeywords" type="number" min="1" max="50" value="12" /></label>
+            <label>每个关键词结果数<input name="maxResults" type="number" min="1" max="20" value="10" /></label>
+            <label>最低客户评分<input name="minScore" type="number" min="0" max="100" value="40" /></label>
+            <button>加入搜索队列</button></form></article>
+          <article class="panel"><h2>任务状态</h2><div id="tasksList" class="cards"></div></article></div>
+        </section>
+
+        <section id="companies" class="view"><article class="panel"><div class="toolbar"><h2>潜在客户</h2><button id="exportButton" class="secondary">导出 CSV</button></div><div class="filters"><input id="companyCountry" placeholder="国家筛选" /><select id="companyGrade"><option value="">所有等级</option><option>A>A级</option><option>B>B级</option><option>C>C级</option><option>D>D级</option></select><button id="filterCompanies" class="secondary">筛选</button></div><div id="companiesList" class="table-wrap"></div></article></section>
+      </section>
+    </main>
+    <script src="config.js"></script><script src="app.js"></script>
+  </body>
+</html>
+

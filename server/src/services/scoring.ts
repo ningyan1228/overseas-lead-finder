@@ -1,0 +1,4 @@
+import type { LeadGrade } from "../types/domain.js";
+const signals:[RegExp,number,string][]=[[/\bpvdc\b/i,30,"官网内容出现 PVDC"],[/(coextrud|co-extrud|multilayer).{0,60}(barrier|film)|(barrier|film).{0,60}(coextrud|co-extrud|multilayer)/i,25,"出现共挤或多层高阻隔膜信号"],[/(shrink bag|sausage casing|blister film|pharmaceutical packaging)/i,20,"出现目标包装应用"],[/(blown film|cast film|film extrusion)/i,15,"出现薄膜加工能力"],[/(resin importer|polymer distributor|resin distributor)/i,15,"出现树脂经销或进口信号"],[/\b(news|blog|directory|jobs?)\b/i,-30,"疑似新闻、博客或目录页面"]];
+export function scoreLead(text:string):{score:number;grade:LeadGrade;details:string}{const hits=signals.filter(([re])=>re.test(text));const score=Math.max(0,Math.min(100,hits.reduce((sum,[,n])=>sum+n,0)));const grade:LeadGrade=score>=80?"A":score>=60?"B":score>=40?"C":"D";return{score,grade,details:hits.map(([,n,label])=>`${n>0?"+":""}${n} ${label}`).join("；")||"未命中可解释的匹配信号"}}
+
