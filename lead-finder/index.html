@@ -57,13 +57,12 @@ resin importer</textarea></label>
             <label>每个关键词结果数<input name="maxResults" type="number" min="1" max="20" value="10" /></label>
             <label>最低客户评分<input name="minScore" type="number" min="0" max="100" value="40" /></label>
             <button>加入搜索队列</button></form></article>
-          <article class="panel"><h2>任务状态</h2><div id="tasksList" class="cards"></div></article></div>
+          <article class="panel"><div class="toolbar"><h2>任务状态</h2><button id="refreshTasksButton" class="secondary" type="button">刷新状态</button></div><div id="tasksList" class="cards"></div></article></div>
         </section>
 
-        <section id="companies" class="view"><article class="panel"><div class="toolbar"><h2>潜在客户</h2><button id="exportButton" class="secondary">导出 CSV</button></div><div class="filters"><input id="companyCountry" placeholder="国家筛选" /><select id="companyGrade"><option value="">所有等级</option><option>A>A级</option><option>B>B级</option><option>C>C级</option><option>D>D级</option></select><button id="filterCompanies" class="secondary">筛选</button></div><div id="companiesList" class="table-wrap"></div></article></section>
+        <section id="companies" class="view"><article class="panel"><div class="toolbar"><h2>潜在客户</h2><button id="refreshCompaniesButton" class="secondary" type="button">刷新结果</button><button id="exportButton" class="secondary">导出 CSV</button></div><div class="filters"><input id="companyCountry" placeholder="国家筛选" /><select id="companyGrade"><option value="">所有等级</option><option>A>A级</option><option>B>B级</option><option>C>C级</option><option>D>D级</option></select><button id="filterCompanies" class="secondary">筛选</button></div><div id="companiesList" class="table-wrap"></div></article></section>
       </section>
     </main>
     <script src="config.js"></script><script src="app.js"></script>
   </body>
 </html>
-
