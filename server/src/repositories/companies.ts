@@ -14,13 +14,26 @@ function hasLocationConflict(company: Company) {
 }
 
 export const companiesRepository = {
-  async list(filters: { country?: string; leadGrade?: string; minScore?: number } = {}): Promise<Company[]> {
+  async list(filters: { country?: string; leadGrade?: string; minScore?: number; hasEmail?: boolean; hasPhone?: boolean; priority?: boolean; developmentStatus?: string } = {}): Promise<Company[]> {
     const and: any[] = [];
     if (filters.country) and.push({ property: "Country", select: { equals: filters.country } });
     if (filters.leadGrade) and.push({ property: "Lead Grade", select: { equals: filters.leadGrade } });
     if (filters.minScore !== undefined) and.push({ property: "Lead Score", number: { greater_than_or_equal_to: filters.minScore } });
+    if (filters.hasEmail === true) and.push({ property: "General Email", email: { is_not_empty: true } });
+    if (filters.hasPhone === true) and.push({ property: "Phone", phone_number: { is_not_empty: true } });
+    if (filters.priority === true) and.push({ property: "Priority", checkbox: { equals: true } });
+    if (filters.developmentStatus) and.push({ property: "Development Status", select: { equals: filters.developmentStatus } });
     const result: any = await requireNotion().databases.query({ database_id: db(), page_size: 100, filter: and.length ? { and } : undefined, sorts: [{ property: "Lead Score", direction: "descending" }] });
     return result.results.map(map).filter((company: Company) => !hasLocationConflict(company));
+  },
+  async get(id: string): Promise<Company> {
+    return map(await requireNotion().pages.retrieve({ page_id: id }) as any);
+  },
+  async updateFollowUp(id: string, input: { developmentStatus?: string; priority?: boolean }): Promise<Company> {
+    const properties: any = { "Updated At": { date: { start: new Date().toISOString() } } };
+    if (input.developmentStatus !== undefined) properties["Development Status"] = { select: { name: input.developmentStatus } };
+    if (input.priority !== undefined) properties.Priority = { checkbox: input.priority };
+    return map(await requireNotion().pages.update({ page_id: id, properties }) as any);
   },
   async findByDomain(domain: string): Promise<Company | null> {
     const result: any = await requireNotion().databases.query({ database_id: db(), filter: { property: "Domain", url: { equals: `https://${domain}` } }, page_size: 1 });

@@ -22,6 +22,7 @@ const taskSchema = z.object({
   maxPages: z.number().int().min(1).max(10).default(5), findContacts: z.boolean().default(true), findEmails: z.boolean().default(true),
   findPhones: z.boolean().default(true), findAddresses: z.boolean().default(true), minScore: z.number().int().min(0).max(100).default(40),
 });
+const companyFollowUpSchema = z.object({ developmentStatus: z.string().min(1).max(50).optional(), priority: z.boolean().optional() }).refine((value) => value.developmentStatus !== undefined || value.priority !== undefined, { message: "No follow-up fields supplied." });
 
 export function createRouter() {
   const router = Router();
@@ -58,8 +59,18 @@ export function createRouter() {
   router.get("/companies", async (req, res) => res.json({ items: await companiesRepository.list({
     country: typeof req.query.country === "string" ? req.query.country : undefined,
     leadGrade: typeof req.query.leadGrade === "string" ? req.query.leadGrade : undefined,
+    hasEmail: req.query.hasEmail === "true" ? true : undefined,
+    hasPhone: req.query.hasPhone === "true" ? true : undefined,
+    priority: req.query.priority === "true" ? true : undefined,
+    developmentStatus: typeof req.query.developmentStatus === "string" ? req.query.developmentStatus : undefined,
     minScore: req.query.includeLowQuality === "true" ? undefined : 40,
   }) }));
+  router.get("/companies/:id", async (req, res) => res.json(await companiesRepository.get(req.params.id)));
+  router.put("/companies/:id/follow-up", async (req, res) => {
+    const parsed = companyFollowUpSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid follow-up fields." });
+    return res.json(await companiesRepository.updateFollowUp(req.params.id, parsed.data));
+  });
   router.get("/companies/:id/contacts", async (req, res) => res.json({ items: await contactsRepository.listByCompany(req.params.id) }));
   router.get("/companies/:id/sources", async (req, res) => res.json({ items: await sourcesRepository.listByCompany(req.params.id) }));
   return router;
