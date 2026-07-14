@@ -16,6 +16,7 @@ export interface PublicContact {
 export interface WebsiteProfile {
   companyName?: string;
   website: string;
+  country?: string;
   address?: string;
   postalCode?: string;
   city?: string;
@@ -99,7 +100,7 @@ function visitJsonLd(value: any, callback: (item: any) => void) {
 function addressFrom(value: any) {
   if (!value || typeof value !== "object") return {};
   const parts = [value.streetAddress, value.addressLocality, value.addressRegion, value.postalCode, value.addressCountry].filter(Boolean).map(String);
-  return { address: parts.join(", ") || undefined, city: value.addressLocality ? String(value.addressLocality) : undefined, region: value.addressRegion ? String(value.addressRegion) : undefined, postalCode: value.postalCode ? String(value.postalCode) : undefined };
+  return { address: parts.join(", ") || undefined, country: value.addressCountry ? String(value.addressCountry) : undefined, city: value.addressLocality ? String(value.addressLocality) : undefined, region: value.addressRegion ? String(value.addressRegion) : undefined, postalCode: value.postalCode ? String(value.postalCode) : undefined };
 }
 
 function publicContactsFromPage($: cheerio.CheerioAPI, sourceUrl: string): PublicContact[] {
@@ -130,7 +131,7 @@ export async function inspectPublicWebsite(initialUrl: string): Promise<WebsiteP
   for (const url of urls.slice(1)) { if (await robotsAllows(url)) { try { const page = await fetchHtml(url); if (page) pages.push(page); } catch { /* inaccessible pages are skipped */ } } }
 
   const emails: string[] = []; const phones: string[] = []; const contacts: PublicContact[] = [];
-  let companyName: string | undefined; let address: string | undefined; let city: string | undefined; let region: string | undefined; let postalCode: string | undefined;
+  let companyName: string | undefined; let country: string | undefined; let address: string | undefined; let city: string | undefined; let region: string | undefined; let postalCode: string | undefined;
   for (const page of pages) {
     const $ = cheerio.load(page.html); const pageText = page.text;
     emails.push(...($("a[href^='mailto:']").map((_, element) => $(element).attr("href")?.replace(/^mailto:/i, "") || "").get()), ...(pageText.match(emailPattern) || []));
@@ -140,7 +141,7 @@ export async function inspectPublicWebsite(initialUrl: string): Promise<WebsiteP
       const types = Array.isArray(item["@type"]) ? item["@type"] : [item["@type"]];
       if (types.some((type: unknown) => /Organization|Corporation|LocalBusiness/i.test(String(type)))) {
         companyName ||= typeof item.name === "string" ? item.name : undefined;
-        const parsedAddress = addressFrom(item.address); address ||= parsedAddress.address; city ||= parsedAddress.city; region ||= parsedAddress.region; postalCode ||= parsedAddress.postalCode;
+        const parsedAddress = addressFrom(item.address); address ||= parsedAddress.address; country ||= parsedAddress.country; city ||= parsedAddress.city; region ||= parsedAddress.region; postalCode ||= parsedAddress.postalCode;
         if (item.email) emails.push(String(item.email)); if (item.telephone) phones.push(String(item.telephone));
       }
       if (types.some((type: unknown) => String(type).toLowerCase() === "person") && typeof item.name === "string") contacts.push({ name: item.name, jobTitle: typeof item.jobTitle === "string" ? item.jobTitle : undefined, email: typeof item.email === "string" ? item.email : undefined, phone: typeof item.telephone === "string" ? item.telephone : undefined, sourceUrl: page.url, confidence: "high" });
@@ -150,5 +151,5 @@ export async function inspectPublicWebsite(initialUrl: string): Promise<WebsiteP
   const cleanedEmails = unique(emails.map(cleanEmail).filter(usableEmail).filter(generalEmail)).slice(0, 5); const cleanedPhones = unique(phones.map(cleanPhone).filter((phone) => phone.replace(/\D/g, "").length >= 7)).slice(0, 5);
   const dedupedContacts = Array.from(new Map(contacts.filter((contact) => contact.name && contactRole.test(contact.jobTitle || "")).map((contact) => [`${contact.name}|${contact.jobTitle}`, contact])).values()).slice(0, 8);
   const evidenceText = pages.map((page) => page.text).join(" ").slice(0, 50000);
-  return { companyName, website: home.url, address, city, region, postalCode, emails: cleanedEmails, phones: cleanedPhones, contacts: dedupedContacts, evidenceText, evidenceUrl: home.url };
+  return { companyName, website: home.url, country, address, city, region, postalCode, emails: cleanedEmails, phones: cleanedPhones, contacts: dedupedContacts, evidenceText, evidenceUrl: home.url };
 }

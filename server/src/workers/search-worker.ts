@@ -7,6 +7,7 @@ import { inspectPublicWebsite } from "../services/crawler/website-profile.js";
 import { isDisqualified, scoreLead } from "../services/scoring.js";
 import { SerpApiProvider } from "../services/search/serpapi.js";
 import { generateKeywords } from "../utils/keywords.js";
+import { countriesMatch } from "../utils/country.js";
 import { isExcludedDomain, normalizeUrl, rootDomain } from "../utils/url.js";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -53,6 +54,9 @@ export class SearchWorker {
         try {
           const profile = await inspectPublicWebsite(hit.website);
           if (profile) {
+            // Search localization is not geographical proof. The official public
+            // address must explicitly match the target country before saving.
+            if (!countriesMatch(task.country, profile.country)) continue;
             const assessment = scoreLead(`${hit.title} ${hit.snippet} ${profile.evidenceText}`, { publicContactCount: profile.contacts.length, hasEmail: Boolean(profile.emails[0]), hasPhone: Boolean(profile.phones[0]), hasAddress: Boolean(profile.address) });
             if (assessment.eligible && assessment.score >= task.minScore) {
               const company = await companiesRepository.upsert({
