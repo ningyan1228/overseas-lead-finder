@@ -1,6 +1,7 @@
 import axios from "axios";
 import { env } from "../../config/env.js";
 import type { SearchProvider, SearchParams } from "./provider.js";
+import { canonicalCountry } from "../../utils/country.js";
 
 const googleCountryCodes: Record<string, string> = {
   "united states": "us", usa: "us", america: "us", canada: "ca", mexico: "mx", brazil: "br",
@@ -12,7 +13,7 @@ const googleCountryCodes: Record<string, string> = {
   "saudi arabia": "sa", "united arab emirates": "ae", uae: "ae", israel: "il", egypt: "eg", "south africa": "za",
 };
 
-function countryCode(country: string) { return googleCountryCodes[country.trim().toLowerCase()]; }
+function countryCode(country: string) { return googleCountryCodes[canonicalCountry(country) || ""]; }
 
 export class SerpApiProvider implements SearchProvider {
   async search(params: SearchParams) {

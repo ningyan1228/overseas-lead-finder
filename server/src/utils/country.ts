@@ -14,6 +14,11 @@ const aliases: Record<string, string> = {
   belgium: "belgium", be: "belgium", austria: "austria", at: "austria",
   switzerland: "switzerland", ch: "switzerland", canada: "canada", ca: "canada",
   australia: "australia", au: "australia",
+  "美国": "united states", "加拿大": "canada", "墨西哥": "mexico", "巴西": "brazil",
+  "德国": "germany", "法国": "france", "意大利": "italy", "西班牙": "spain", "葡萄牙": "portugal", "英国": "united kingdom", "爱尔兰": "ireland",
+  "荷兰": "netherlands", "比利时": "belgium", "波兰": "poland", "奥地利": "austria", "瑞士": "switzerland", "瑞典": "sweden", "挪威": "norway", "丹麦": "denmark", "芬兰": "finland", "捷克": "czechia", "罗马尼亚": "romania",
+  "土耳其": "turkey", "沙特阿拉伯": "saudi arabia", "阿联酋": "united arab emirates", "以色列": "israel", "埃及": "egypt", "南非": "south africa",
+  "中国": "china", "中国大陆": "china", "中国香港": "hong kong", "香港": "hong kong", "日本": "japan", "韩国": "south korea", "南韩": "south korea", "印度": "india", "越南": "vietnam", "泰国": "thailand", "印度尼西亚": "indonesia", "印尼": "indonesia", "马来西亚": "malaysia", "新加坡": "singapore", "菲律宾": "philippines", "澳大利亚": "australia", "新西兰": "new zealand",
 };
 
 function normalize(value?: string) {
