@@ -50,8 +50,8 @@ const countryDomainSuffixes: Record<string, string[]> = {
   germany: [".de"], turkey: [".tr"], brazil: [".br"], spain: [".es"], france: [".fr"], italy: [".it"],
   portugal: [".pt"], poland: [".pl"], netherlands: [".nl"], belgium: [".be"], austria: [".at"],
   switzerland: [".ch"], canada: [".ca"], australia: [".com.au", ".au"], japan: [".co.jp", ".jp"],
-  india: [".co.in", ".in"], south korea: [".co.kr", ".kr"], singapore: [".com.sg", ".sg"],
-  united kingdom: [".co.uk", ".org.uk", ".uk"],
+  india: [".co.in", ".in"], "south korea": [".co.kr", ".kr"], singapore: [".com.sg", ".sg"],
+  "united kingdom": [".co.uk", ".org.uk", ".uk"],
 };
 
 export function websiteMatchesCountryDomain(country: string | undefined, website: string | undefined) {
