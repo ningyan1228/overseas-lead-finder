@@ -43,3 +43,22 @@ export function knownCountryIn(value?: string) {
     .filter(([alias]) => alias.length > 2 && new RegExp(`(^|[^a-z])${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z])`, "i").test(normalized))
     .map(([, country]) => country)[0];
 }
+
+// A country-code domain is weaker than a postal address, but it is useful
+// supporting evidence when a public company site omits JSON-LD address data.
+const countryDomainSuffixes: Record<string, string[]> = {
+  germany: [".de"], turkey: [".tr"], brazil: [".br"], spain: [".es"], france: [".fr"], italy: [".it"],
+  portugal: [".pt"], poland: [".pl"], netherlands: [".nl"], belgium: [".be"], austria: [".at"],
+  switzerland: [".ch"], canada: [".ca"], australia: [".com.au", ".au"], japan: [".co.jp", ".jp"],
+  india: [".co.in", ".in"], south korea: [".co.kr", ".kr"], singapore: [".com.sg", ".sg"],
+  united kingdom: [".co.uk", ".org.uk", ".uk"],
+};
+
+export function websiteMatchesCountryDomain(country: string | undefined, website: string | undefined) {
+  const canonical = canonicalCountry(country);
+  if (!canonical || !website) return false;
+  try {
+    const hostname = new URL(website).hostname.toLowerCase();
+    return (countryDomainSuffixes[canonical] || []).some((suffix) => hostname === suffix.slice(1) || hostname.endsWith(suffix));
+  } catch { return false; }
+}

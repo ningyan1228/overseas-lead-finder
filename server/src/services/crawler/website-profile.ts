@@ -2,6 +2,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import { assertSafePublicUrl } from "../../utils/ssrf.js";
 import { rootDomain } from "../../utils/url.js";
+import { knownCountryIn } from "../../utils/country.js";
 
 export interface PublicContact {
   name: string;
@@ -17,6 +18,7 @@ export interface WebsiteProfile {
   companyName?: string;
   website: string;
   country?: string;
+  countrySource?: "json_ld" | "public_address";
   address?: string;
   postalCode?: string;
   city?: string;
@@ -110,6 +112,14 @@ function addressFrom(value: any) {
   return { address: parts.join(", ") || undefined, country: value.addressCountry ? String(value.addressCountry) : undefined, city: value.addressLocality ? String(value.addressLocality) : undefined, region: value.addressRegion ? String(value.addressRegion) : undefined, postalCode: value.postalCode ? String(value.postalCode) : undefined };
 }
 
+function publicAddressText($: cheerio.CheerioAPI) {
+  const candidates = $("address,[itemprop='address'],[itemtype*='PostalAddress'],[class*='address'],[id*='address']")
+    .map((_, element) => $(element).text().replace(/\s+/g, " ").trim())
+    .get()
+    .filter((value) => value.length >= 8 && value.length <= 600);
+  return candidates.sort((a, b) => b.length - a.length)[0];
+}
+
 function publicContactsFromPage($: cheerio.CheerioAPI, sourceUrl: string): PublicContact[] {
   const found: PublicContact[] = [];
   $("h1,h2,h3,h4,p,li").each((_, element) => {
@@ -139,7 +149,8 @@ export async function inspectPublicWebsite(initialUrl: string, options: CrawlOpt
   for (const url of urls.slice(1)) { if (await robotsAllows(url)) { try { const page = await fetchHtml(url); if (page) pages.push(page); } catch { /* inaccessible pages are skipped */ } } }
 
   const emails: string[] = []; const phones: string[] = []; const contacts: PublicContact[] = [];
-  let companyName: string | undefined; let country: string | undefined; let address: string | undefined; let city: string | undefined; let region: string | undefined; let postalCode: string | undefined;
+  let companyName: string | undefined; let country: string | undefined; let countrySource: WebsiteProfile["countrySource"];
+  let address: string | undefined; let city: string | undefined; let region: string | undefined; let postalCode: string | undefined;
   for (const page of pages) {
     const $ = cheerio.load(page.html); const pageText = page.text;
     emails.push(...($("a[href^='mailto:']").map((_, element) => $(element).attr("href")?.replace(/^mailto:/i, "") || "").get()), ...(pageText.match(emailPattern) || []));
@@ -149,18 +160,28 @@ export async function inspectPublicWebsite(initialUrl: string, options: CrawlOpt
       const types = Array.isArray(item["@type"]) ? item["@type"] : [item["@type"]];
       if (types.some((type: unknown) => /Organization|Corporation|LocalBusiness/i.test(String(type)))) {
         companyName ||= typeof item.name === "string" ? item.name : undefined;
-        const parsedAddress = addressFrom(item.address); address ||= parsedAddress.address; country ||= parsedAddress.country; city ||= parsedAddress.city; region ||= parsedAddress.region; postalCode ||= parsedAddress.postalCode;
+        const parsedAddress = addressFrom(item.address); address ||= parsedAddress.address;
+        if (!country && parsedAddress.country) { country = parsedAddress.country; countrySource = "json_ld"; }
+        city ||= parsedAddress.city; region ||= parsedAddress.region; postalCode ||= parsedAddress.postalCode;
         if (item.email) emails.push(String(item.email)); if (item.telephone) phones.push(String(item.telephone));
       }
       if (types.some((type: unknown) => String(type).toLowerCase() === "person") && typeof item.name === "string") contacts.push({ name: item.name, jobTitle: typeof item.jobTitle === "string" ? item.jobTitle : undefined, email: typeof item.email === "string" ? item.email : undefined, phone: typeof item.telephone === "string" ? item.telephone : undefined, sourceUrl: page.url, confidence: "high" });
     });
+    const publishedAddress = publicAddressText($);
+    if (publishedAddress) {
+      address ||= publishedAddress;
+      if (!country) {
+        const detected = knownCountryIn(publishedAddress);
+        if (detected) { country = detected; countrySource = "public_address"; }
+      }
+    }
   }
   companyName ||= $home("meta[property='og:site_name']").attr("content") || home.title.split(/[|–-]/)[0].trim() || domain;
   const cleanedEmails = unique(emails.map(cleanEmail).filter(usableEmail).filter(generalEmail)).slice(0, 5); const cleanedPhones = unique(phones.map(cleanPhone).filter((phone) => phone.replace(/\D/g, "").length >= 7)).slice(0, 5);
   const dedupedContacts = Array.from(new Map(contacts.filter((contact) => contact.name && contactRole.test(contact.jobTitle || "")).map((contact) => [`${contact.name}|${contact.jobTitle}`, contact])).values()).slice(0, 8);
   const evidenceText = pages.map((page) => page.text).join(" ").slice(0, 50000);
   return {
-    companyName, website: home.url, country,
+    companyName, website: home.url, country, countrySource,
     address: options.findAddresses === false ? undefined : address,
     city: options.findAddresses === false ? undefined : city,
     region: options.findAddresses === false ? undefined : region,

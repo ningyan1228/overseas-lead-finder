@@ -21,6 +21,7 @@ const disqualifiers: [RegExp, string][] = [
   [/(market\s*(research|report|outlook|analysis|size|forecast)|industry\s*report|research\s*report|buy\s*(this|the)?\s*report)/i, "市场报告或研究页面"],
   [/\b(news|blog|directory|jobs?|webinar|whitepaper|wikipedia)\b/i, "资讯、目录或招聘页面"],
   [/(marketpublishers|indexbox|marketreportanalytics|data\s*insights|global\s*info\s*research)/i, "已识别的市场研究来源"],
+  [/(e-?commerce|add to cart|shopping cart|buy now|marketplace|wholesale platform)/i, "电商或交易平台"],
 ];
 
 const signals: [RegExp, number, string, "manufacturer" | "distributor" | ""][] = [
@@ -28,6 +29,8 @@ const signals: [RegExp, number, string, "manufacturer" | "distributor" | ""][] =
   [/(coextrud|co-extrud|multilayer).{0,60}(barrier|film)|(barrier|film).{0,60}(coextrud|co-extrud|multilayer)/i, 25, "共挤或多层高阻隔膜能力", "manufacturer"],
   [/(blown film|cast film|film extrusion|film converting|lamination)/i, 20, "薄膜加工能力", "manufacturer"],
   [/(shrink bag|sausage casing|blister film|pharmaceutical packaging|meat packaging)/i, 20, "目标包装应用", "manufacturer"],
+  [/(high\s*barrier).{0,60}(packaging|film)|(packaging|film).{0,60}(high\s*barrier)/i, 15, "高阻隔包装膜信号", "manufacturer"],
+  [/(cheese|dairy|fresh\s*meat|food).{0,60}(packaging|film)|(packaging|film).{0,60}(cheese|dairy|fresh\s*meat|food)/i, 15, "食品包装应用信号", "manufacturer"],
   [/(resin importer|polymer distributor|resin distributor|chemical distributor)/i, 25, "树脂经销或进口能力", "distributor"],
   [/\bpvdc\b|vinylidene\s+chloride/i, 15, "内容与 PVDC 相关", ""],
 ];

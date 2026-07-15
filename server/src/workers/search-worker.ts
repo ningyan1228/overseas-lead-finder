@@ -8,7 +8,7 @@ import { inspectPublicWebsite } from "../services/crawler/website-profile.js";
 import { isDisqualified, scoreLead } from "../services/scoring.js";
 import { SerpApiProvider } from "../services/search/serpapi.js";
 import { generateKeywords } from "../utils/keywords.js";
-import { countriesMatch } from "../utils/country.js";
+import { countriesMatch, websiteMatchesCountryDomain } from "../utils/country.js";
 import { isExcludedDomain, normalizeUrl, rootDomain } from "../utils/url.js";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -60,22 +60,35 @@ export class SearchWorker {
       if (!discovered.size && failedKeywords.length === keywords.length) throw new Error("All keyword searches timed out after automatic retries.");
       const entries = [...discovered.entries()].slice(0, env.MAX_COMPANIES_PER_TASK);
       let valid = 0;
+      let countryUnverified = 0;
+      let relevanceRejected = 0;
       for (let index = 0; index < entries.length; index += 1) {
         const [domain, hit] = entries[index];
         try {
           const profile = await inspectPublicWebsite(hit.website, { maxPages: task.maxPages, findContacts: task.findContacts, findEmails: task.findEmails, findPhones: task.findPhones, findAddresses: task.findAddresses });
           if (profile) {
-            // Search localization is not geographical proof. The official public
-            // address must explicitly match the target country before saving.
-            if (!countriesMatch(task.country, profile.country)) continue;
             const assessment = scoreLead(`${hit.title} ${hit.snippet} ${profile.evidenceText}`, { publicContactCount: profile.contacts.length, hasEmail: Boolean(profile.emails[0]), hasPhone: Boolean(profile.phones[0]), hasAddress: Boolean(profile.address) });
+            if (!assessment.eligible || assessment.score < task.minScore) { relevanceRejected += 1; continue; }
+
+            // Prefer an address from JSON-LD or a public address block.  A country-code
+            // domain is accepted only as supporting evidence together with a public
+            // company contact point; this improves recall without treating search
+            // localization alone as proof of location.
+            const addressVerified = countriesMatch(task.country, profile.country);
+            const domainSupported = websiteMatchesCountryDomain(task.country, profile.website)
+              && Boolean(profile.address || profile.phones[0] || profile.emails[0]);
+            if (!addressVerified && !domainSupported) { countryUnverified += 1; continue; }
+
             if (assessment.eligible && assessment.score >= task.minScore) {
+              const locationReason = addressVerified
+                ? `；国家证据：${profile.countrySource === "json_ld" ? "官网结构化地址" : "官网公开地址"}`
+                : "；国家证据：官网国家域名及公开联系信息";
               const company = await companiesRepository.upsert({
                 name: profile.companyName || hit.title || domain, domain, website: profile.website, country: task.country,
                 region: profile.region, city: profile.city, address: profile.address, postalCode: profile.postalCode,
                 phone: profile.phones[0], generalEmail: profile.emails[0], companyType: assessment.companyType,
                 applications: product.applications, relevantProducts: [product.englishName], description: profile.evidenceText.slice(0, 1200),
-                leadScore: assessment.score, leadGrade: assessment.grade, scoreDetails: assessment.details,
+                leadScore: assessment.score, leadGrade: assessment.grade, scoreDetails: `${assessment.details}${locationReason}`,
                 evidenceSummary: profile.evidenceText.slice(0, 1200), evidenceUrl: profile.evidenceUrl,
                 developmentStatus: "未联系", priority: assessment.grade === "A", sourceTaskId: task.id,
               });
@@ -92,8 +105,11 @@ export class SearchWorker {
         await tasksRepository.update(task.id, { companiesProcessed: index + 1, validCompanies: valid, progress: 40 + Math.round((index + 1) / Math.max(entries.length, 1) * 58) });
         await delay(900);
       }
-      const partialMessage = failedKeywords.length ? `部分关键词未完成（${failedKeywords.slice(0, 3).join("、")}${failedKeywords.length > 3 ? "等" : ""}），其余关键词已完成。` : "";
-      await tasksRepository.update(task.id, { status: "completed", progress: 100, completedAt: new Date().toISOString(), errorMessage: partialMessage });
+      const notes: string[] = [];
+      if (failedKeywords.length) notes.push(`部分关键词未完成（${failedKeywords.slice(0, 3).join("、")}${failedKeywords.length > 3 ? "等" : ""}），其余关键词已完成。`);
+      if (!valid && countryUnverified) notes.push(`发现 ${countryUnverified} 个行业相关官网，但缺少可确认的 ${task.country} 公开地址或国家域名。`);
+      if (!valid && relevanceRejected) notes.push(`已排除 ${relevanceRejected} 个报告、资讯、电商或与目标应用不匹配的网站。`);
+      await tasksRepository.update(task.id, { status: "completed", progress: 100, completedAt: new Date().toISOString(), errorMessage: notes.join(" ") });
     } catch (error) {
       const message = error instanceof Error ? error.message : "未知任务错误";
       console.error("Search worker failed:", message);
